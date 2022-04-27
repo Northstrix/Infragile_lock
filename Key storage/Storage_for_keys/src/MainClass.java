@@ -1,10 +1,3 @@
-/*
-Infragile lock
-Distributed under the MIT License
-© Copyright Maxim Bortnikov 2022
-For more information please visit
-https://github.com/Northstrix/Infragile_lock
-*/
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +13,8 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
 import java.security.SecureRandom;
 
 public class MainClass extends JFrame{
@@ -82,7 +77,7 @@ public class MainClass extends JFrame{
         out_list = new JList<>(listModel);
 	    JMenuBar mb;
 	    JMenu rc, k1;
-	    JMenuItem add_r, mod_r, del_r, ext_r, lst_r, s_k, g_k, exp_r;
+	    JMenuItem add_r, mod_r, del_r, ext_r, lst_r, s_k, g_k, exp_to_tbl, exp_r;
         mb = new JMenuBar();
         rc = new JMenu(" Record ");
 	    add_r = new JMenuItem("Add");
@@ -90,12 +85,14 @@ public class MainClass extends JFrame{
 	    del_r = new JMenuItem("Delete");
 	    ext_r = new JMenuItem("Extract");
 	    lst_r = new JMenuItem("List all");
+	    exp_to_tbl = new JMenuItem("Print all to the table");
 	    exp_r = new JMenuItem("Export all to the .csv file");
         rc.add(add_r);
         rc.add(mod_r);
         rc.add(del_r);
         rc.add(ext_r);
         rc.add(lst_r);
+        rc.add(exp_to_tbl);
         rc.add(exp_r);
         mb.add(rc);
         
@@ -127,6 +124,7 @@ public class MainClass extends JFrame{
 		add_r.setForeground(frgr);
 		mod_r.setForeground(frgr);
 		del_r.setForeground(frgr);
+		exp_to_tbl.setForeground(frgr);
 		ext_r.setForeground(frgr);
 		lst_r.setForeground(frgr);
 		exp_r.setForeground(frgr);
@@ -135,6 +133,7 @@ public class MainClass extends JFrame{
 		del_r.setBackground(bl);
 		ext_r.setBackground(bl);
 		lst_r.setBackground(bl);
+		exp_to_tbl.setBackground(bl);
 		exp_r.setBackground(bl);
 		
 		s_k.setForeground(frgr);
@@ -160,7 +159,7 @@ public class MainClass extends JFrame{
 	    mod_r.addActionListener(e ->
 	    {
 	    	if (AES_Key != null)
-	    	modify_rec();
+	    		modify_rec();
 	    	else
 	    		add_to_list("Select the encryption key to continue");
 	    });
@@ -171,7 +170,7 @@ public class MainClass extends JFrame{
 	    ext_r.addActionListener(e ->
 	    {
 	    	if (AES_Key != null)
-	    	extract_rec();
+	    		extract_rec();
 	    	else
 	    		add_to_list("Select the encryption key to continue");
 	    });
@@ -182,6 +181,13 @@ public class MainClass extends JFrame{
 	    extr.addActionListener(e ->
 	    {
 	    	for_e_v.setText((String) out_list.getSelectedValue());
+	    });
+	    exp_to_tbl.addActionListener(e ->
+	    {
+	    	if (AES_Key != null)
+	    		exp_to_t();
+	    	else
+	    		add_to_list("Select the encryption key to continue");
 	    });
 	    exp_r.addActionListener(e ->
 	    {
@@ -548,6 +554,44 @@ public class MainClass extends JFrame{
 	      }
 	      return;
 	}
+	
+	public static void exp_to_t() {
+		try {
+		Connection c = null;
+		Statement stmt = null;
+		DefaultTableModel tableModel = new DefaultTableModel();
+		JTable table = new JTable(tableModel);
+		tableModel.insertRow(tableModel.getRowCount(), new Object[] { "Keys" });
+		JFrame frm = new JFrame("Exported Keys");
+		table.setForeground(frgr);
+		table.setBackground(bclr);
+		frm.setBackground(bclr);
+		frm.setSize(750, 350);
+		frm.add(new JScrollPane(table));
+		frm.setVisible(true);
+		tableModel.setRowCount(0);
+		tableModel.setColumnIdentifiers(new Object[]{"ID", "Title", "Keys"});
+	    c = DriverManager.getConnection("jdbc:sqlite:keys.db");
+	    c.setAutoCommit(false);
+	    stmt = c.createStatement();
+	    ResultSet rs = stmt.executeQuery( "SELECT * FROM Keys" );
+	    int n_rec = 0;
+		while (rs.next()) {
+		tableModel.addRow(new Object[]{
+		rs.getString("ID"),
+		MainClass.decrypt(rs.getString("Title"), AES_Key),
+		MainClass.decrypt(rs.getString("Key"), AES_Key),
+		});
+		n_rec += 17;
+		}
+	    rs.close();
+	    stmt.close();
+	    c.close();
+		frm.setSize(750, 70 + n_rec);
+		} catch (SQLException ex) {
+		throw new RuntimeException(ex);
+		}
+}
 	
 	public static void extract_rec() {
 		   Connection c = null;
